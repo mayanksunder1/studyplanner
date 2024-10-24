@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personalized Study Planner</title>
+  <style>
+    body {
+      font-family: sans-serif;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid black;
+      padding: 8px;
+      text-align: left;
+    }
+    .complete {
+      text-decoration: line-through;
+    }
+  </style>
+</head>
+<body>
+  <h1>Personalized Study Planner</h1>
+
+  <form id="study-form">
+    <h2>Select Subjects and Availability</h2>
+    <label for="subjects">Subjects (select multiple):</label><br>
+    <select id="subjects" name="subjects" multiple size="4">
+      <option value="Mathematics">Mathematics</option>
+      <option value="Science">Science</option>
+      <option value="History">History</option>
+      <option value="English">English</option>
+    </select><br><br>
+
+    <h3>Availability (select time slots for each day):</h3>
+    <div id="availability-inputs">
+    </div>
+
+    <br>
+    <button type="button" onclick="generateSchedule()">Generate Schedule</button>
+  </form>
+
+  <div id="schedule-container">
+    <h2>Study Schedule</h2>
+    <table id="schedule">
+    </table>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
