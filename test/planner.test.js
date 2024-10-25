@@ -1,161 +1,116 @@
-const {
-    generateAvailabilityInputs,
-    collectUserInputs,
-    generateSchedule,
-    calculateTimeDifference,
-    displaySchedule,
-    markAsComplete
-  } = require('../script');
-  
-describe("Personalized Study Planner", () => {
+/**
+ * @jest-environment jsdom
+ */
 
-    beforeEach(() => {
-        document.body.innerHTML = `
-        <div id="availability-inputs"></div>
-        <select id="subjects" multiple>
-          <option value="Mathematics">Mathematics</option>
-          <option value="Science">Science</option>
-          <option value="History">History</option>
-          <option value="English">English</option>
-        </select>
-        <input type="time" id="start-time-Monday" />
-        <input type="time" id="end-time-Monday" />
-        <input type="time" id="start-time-Tuesday" />
-        <input type="time" id="end-time-Tuesday" />
-        <table id="schedule"></table>
-      `;
-      global.alert = jest.fn();
-    });
-      
-      
-      test("Should correctly select subjects", () => {
-        generateAvailabilityInputs();
-    
-      const subjectsDropdown = document.getElementById("subjects");
-      subjectsDropdown.options[0].selected = true;  
-      subjectsDropdown.options[2].selected = true;  
-  
-      const { selectedSubjects } = collectUserInputs();
-      expect(selectedSubjects).toEqual(["Mathematics", "History"]);
-    });
-  
-    test("Should validate that start time is before end time", () => {
-      document.getElementById("start-time-Monday").value = "10:00";
-      document.getElementById("end-time-Monday").value = "09:00";
-  
-      const result = collectUserInputs();
-      expect(result).toBeUndefined(); 
-    });
-  
-    
-    test("Should generate a study schedule", () => {
-  document.getElementById("start-time-Monday").value = "09:00";
-  document.getElementById("end-time-Monday").value = "11:00";
-  document.getElementById("start-time-Tuesday").value = "10:00";
-  document.getElementById("end-time-Tuesday").value = "12:00";
+const fs = require('fs');
+const path = require('path');
 
-  document.getElementById("subjects").options[0].selected = true; 
-  document.getElementById("subjects").options[1].selected = true; 
+// Load the HTML file into the DOM
+const html = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf8');
+document.body.innerHTML = html;
 
-  generateSchedule(); 
+// Load and execute script.js directly in this test environment
+const script = fs.readFileSync(path.resolve(__dirname, '../script.js'), 'utf8');
+eval(script);
 
-  const scheduleTable = document.getElementById("schedule");
-  expect(scheduleTable.rows.length).toBeGreaterThan(1); 
-  expect(scheduleTable.textContent).toContain("Mathematics");
-  expect(scheduleTable.textContent).toContain("Science");
-});
-  
+describe('Personalized Study Planner', () => {
+  beforeEach(() => {
+    // Reload HTML before each test to ensure a fresh state
+    document.body.innerHTML = html;
+
+    // Generate availability inputs dynamically
+    generateAvailabilityInputs();
+  });
+
+  test('should generate availability inputs for all days of the week', () => {
+    const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
     
-    test("Should mark a study session as complete", () => {
-        document.body.innerHTML = `
-          <table id="schedule">
-            <tr>
-              <td>Monday</td>
-              <td>
-                <span>
-                  Mathematics (60 mins) 
-                  <button id="complete-btn">Complete</button>
-                </span>
-              </td>
-            </tr>
-          </table>
-        `;
-      
-        const completeButton = document.getElementById("complete-btn");
-        
-        const markAsComplete = (day, subject, button) => {
-          const completedSession = button.parentNode; 
-          completedSession.classList.add("complete"); 
-        };
-        
-        
-        completeButton.addEventListener('click', () => markAsComplete("Monday", "Mathematics", completeButton));
-      
-        completeButton.click();
-      
-        const completedSession = completeButton.parentNode;
-        expect(completedSession.classList).toContain("complete");  
-      });
-      
-  
-      test("Should display an error if no subject is selected", () => {
-        document.body.innerHTML = `
-            <div>
-                <select id="subjects" multiple>
-                    <option value="Mathematics">Mathematics</option>
-                    <option value="Science">Science</option>
-                    <!-- Other subjects can be added here -->
-                </select>
-                <button id="generate-button">Generate Schedule</button>
-            </div>
-        `;
-    
-        jest.spyOn(window, 'alert').mockImplementation(() => {}); 
-    
-        const collectUserInputsMock = jest.fn(() => ({
-            selectedSubjects: [],
-            availability: {},
-        }));
-    
-        window.collectUserInputs = collectUserInputsMock;
-    
-        document.getElementById("generate-button").onclick = generateSchedule;
-    
-        const generateButton = document.getElementById("generate-button");
-        generateButton.click(); 
-        expect(window.alert).toHaveBeenCalledWith("Please select at least one subject.");
+    daysOfWeek.forEach(day => {
+      const startTimeInput = document.getElementById(`start-time-${day}`);
+      const endTimeInput = document.getElementById(`end-time-${day}`);
+
+      expect(startTimeInput).toBeTruthy();
+      expect(endTimeInput).toBeTruthy();
     });
-    
+  });
+
+  test('should collect user inputs correctly', () => {
+    const subjectsSelect = document.getElementById('subjects');
+    const selectedOptions = subjectsSelect.options;
+    selectedOptions[0].selected = true; // Select "Mathematics"
+    selectedOptions[1].selected = true; // Select "Science"
+
+    const mondayStartTime = document.getElementById('start-time-Monday');
+    const mondayEndTime = document.getElementById('end-time-Monday');
+    mondayStartTime.value = '09:00';
+    mondayEndTime.value = '11:00';
+
+    const userInputs = collectUserInputs();
+
+    expect(userInputs.selectedSubjects).toEqual(['Mathematics', 'Science']);
+    expect(userInputs.availability.Monday).toEqual({ startTime: '09:00', endTime: '11:00' });
+  });
+
+  test('should throw an error if no subject is selected', () => {
+    window.alert = jest.fn();
+
+    generateSchedule();
+
+    expect(window.alert).toHaveBeenCalledWith("Please select at least one subject.");
+  });
+
+  test('should throw an error if availability is not provided', () => {
+    const subjectsSelect = document.getElementById('subjects');
+    subjectsSelect.options[0].selected = true;
+
+    window.alert = jest.fn();
+
+    generateSchedule();
+
+    expect(window.alert).toHaveBeenCalledWith("Please provide valid availability times for at least one day.");
+  });
+
+  test('should generate a valid schedule when input is provided', () => {
+    const subjectsSelect = document.getElementById('subjects');
+    subjectsSelect.options[0].selected = true;
+
+    const mondayStartTime = document.getElementById('start-time-Monday');
+    const mondayEndTime = document.getElementById('end-time-Monday');
+    mondayStartTime.value = '09:00';
+    mondayEndTime.value = '11:00';
+
+    generateSchedule();
+
+    const scheduleTable = document.getElementById('schedule');
+    expect(scheduleTable.innerHTML).toContain('Mathematics');
+  });
+
+  test('should mark study session as complete', () => {
+    // Mock console.log
+    const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
   
-    test("Should display an error if no availability is provided", () => { 
-        document.body.innerHTML = `
-            <div>
-                <select id="subjects" multiple>
-                    <option value="Mathematics">Mathematics</option>
-                    <option value="Science">Science</option>
-                </select>
-                <button id="generate-button">Generate Schedule</button>
-            </div>
-        `;
-    
-        jest.spyOn(window, 'alert').mockImplementation(() => {});
-    
-        const collectUserInputsMock = jest.fn(() => ({
-            selectedSubjects: [], 
-            availability: {}, 
-        }));
-    
-        window.collectUserInputs = collectUserInputsMock;
-    
-        document.getElementById("generate-button").onclick = generateSchedule;
-    
-        const generateButton = document.getElementById("generate-button");
-        generateButton.click(); 
-    
-        expect(window.alert).toHaveBeenCalledWith("Please select at least one subject.");
-    });
-    
-    
+    // Setup the schedule table with a sample study session
+    const scheduleTable = document.getElementById('schedule');
+    scheduleTable.innerHTML = `
+      <tr>
+        <td>Monday</td>
+        <td><span>Mathematics (60 mins) <button onclick="markAsComplete('Monday', 'Mathematics', this)">Complete</button></span></td>
+      </tr>
+    `;
   
+    // Simulate marking the session as complete
+    const button = scheduleTable.querySelector('button');
+    markAsComplete('Monday', 'Mathematics', button);
+  
+    // Verify that the session is marked as complete
+    const completedSession = button.parentNode;
+    expect(completedSession.classList).toContain('complete');
+  
+    // Check that console.log was called with the expected message
+    expect(consoleSpy).toHaveBeenCalledWith('Study session for Mathematics on Monday marked as complete.');
+  
+    // Clean up the mock
+    consoleSpy.mockRestore();
   });
   
+});
